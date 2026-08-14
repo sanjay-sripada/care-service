@@ -2,18 +2,27 @@
 
 **Trusted care for the people you love.**
 
-A modern marketplace platform where families can find and book verified caregivers and home-care professionals for elderly people, patients, and hospital assistance.
+## Quick Start
 
-## Tech Stack
+### 1. Set up PostgreSQL
 
-- **Frontend:** Next.js 16, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend:** Next.js API Routes
-- **Database:** PostgreSQL (schema ready, mock data for MVP)
-- **Auth:** Phone OTP + Email (UI implemented)
-- **Payments:** Razorpay (demo UI)
-- **AI Matching:** Rule-based requirement parser with extensible matching engine
+Use [Neon](https://neon.tech) (free) or local PostgreSQL. Copy `.env.example` to `.env`:
 
-## Getting Started
+```bash
+cp .env.example .env
+```
+
+Set `DATABASE_URL` and `AUTH_SECRET` (generate with `openssl rand -base64 32`).
+
+### 2. Initialize database
+
+```bash
+npm run db:setup
+```
+
+This runs migrations and seeds demo data (caregivers, customer, bookings).
+
+### 3. Run locally
 
 ```bash
 npm install
@@ -22,83 +31,50 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-## Key Routes
+## Demo Accounts
 
-### Customer
-| Route | Description |
-|-------|-------------|
-| `/` | Landing page |
-| `/login` | Customer login (OTP) |
-| `/register` | Customer registration |
-| `/home` | Customer dashboard |
-| `/book` | Multi-step booking flow with AI assistant |
-| `/caregivers/[id]` | Caregiver profile |
-| `/booking/payment` | Payment page |
-| `/booking/active` | Active booking tracking |
-| `/family` | Family care dashboard |
-| `/history` | Booking history |
-| `/reviews` | Leave a review |
-| `/profile` | Customer profile |
+| Role | Phone | Notes |
+|------|-------|-------|
+| Customer | +91 99887 76600 | Seeded with bookings |
+| Caregiver | +91 98765 43210 | Lakshmi Devi |
+| Admin | +91 99887 76655 | Admin dashboard |
 
-### Caregiver
-| Route | Description |
-|-------|-------------|
-| `/caregiver/login` | Caregiver login |
-| `/caregiver/register` | Caregiver onboarding |
-| `/caregiver/dashboard` | Job requests, earnings, stats |
+OTP is shown in the UI when `DEV_OTP_EXPOSE=true`.
 
-### Admin
-| Route | Description |
-|-------|-------------|
-| `/admin/dashboard` | Overview, bookings, caregivers, reviews |
+## What's Real Now
 
-## Features
+- **PostgreSQL** — users, caregivers, bookings, reviews, care events
+- **Phone OTP auth** — JWT sessions with role-based access
+- **Booking lifecycle** — create → pay → confirm → start → complete
+- **Caregiver actions** — accept, reject, start service, end service
+- **Care events** — check-in, activities, SOS alerts persisted
+- **Reviews** — saved to DB, updates caregiver rating
+- **Admin** — verification queue, stats from real data
+- **Payments** — demo mode (no Razorpay keys needed); add keys for production
 
-- **AI Requirement Assistant** — Natural language input parsed into structured booking data
-- **Smart Caregiver Matching** — Score-based matching with explained recommendations
-- **Family Care Dashboard** — Real-time activity tracking for remote family members
-- **Trust & Safety** — Verification badges, SOS button, check-in/check-out
-- **Multi-role Support** — Customer, Caregiver, and Admin portals
+## Vercel Deployment
 
-## Project Structure
+Set these environment variables in Vercel:
 
 ```
-src/
-├── app/                  # Next.js App Router pages & API routes
-├── components/
-│   ├── booking/          # Booking flow components
-│   ├── caregiver/        # Caregiver cards & profiles
-│   ├── landing/          # Landing page sections
-│   ├── layout/           # Navbar, Footer
-│   ├── shared/           # Reusable UI components
-│   └── ui/               # shadcn/ui primitives
-├── contexts/             # React context (booking state)
-└── lib/
-    ├── ai-parser.ts      # Requirement parsing logic
-    ├── matching.ts       # Caregiver matching algorithm
-    ├── mock-data.ts      # Realistic mock data
-    ├── types.ts          # TypeScript types
-    └── constants.ts      # App constants & config
+DATABASE_URL=postgresql://...
+AUTH_SECRET=<random-32-char-secret>
+DEV_OTP_EXPOSE=false
+RAZORPAY_KEY_ID=... (optional)
+RAZORPAY_KEY_SECRET=... (optional)
 ```
 
-## MVP Scope
+After deploy, run `npm run db:setup` against your production database (locally with production DATABASE_URL).
 
-This MVP includes all 13 priority features with realistic mock data:
+## Scripts
 
-1. Customer registration
-2. Caregiver registration
-3. Caregiver verification status
-4. Service selection
-5. Requirement creation (with AI)
-6. Caregiver search & matching
-7. Caregiver profiles
-8. Booking flow
-9. Payment (demo)
-10. Booking status tracking
-11. Check-in/check-out
-12. Reviews
-13. Admin dashboard
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server |
+| `npm run build` | Production build |
+| `npm run db:setup` | Push schema + seed data |
+| `npm run db:seed` | Re-seed data only |
 
-## Disclaimer
+## Tech Stack
 
-SaathiCare provides trained, verified caregivers for **non-medical assistance**. Caregivers are not licensed nurses or doctors.
+Next.js 16 · TypeScript · Tailwind · shadcn/ui · Prisma · PostgreSQL · Jose (JWT) · Razorpay

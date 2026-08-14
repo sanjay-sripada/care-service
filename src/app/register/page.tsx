@@ -15,15 +15,52 @@ export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [devOtp, setDevOtp] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
-    if (!name || phone.length < 10) {
+  const handleSendOtp = async () => {
+    if (!name || phone.replace(/\D/g, "").length < 10) {
       toast.error("Please fill in all required fields");
       return;
     }
-    toast.success("Account created! Please verify your phone.");
-    router.push("/login");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setOtpSent(true);
+      if (data.devOtp) setDevOtp(data.devOtp);
+      toast.success("OTP sent!");
+    } catch {
+      toast.error("Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, otp, name, role: "customer" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("Account created!");
+      router.push("/home");
+    } catch {
+      toast.error("Registration failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,23 +75,27 @@ export default function RegisterPage() {
               <span className="text-xl font-bold">{APP_NAME}</span>
             </Link>
             <h1 className="text-2xl font-bold">Create your account</h1>
-            <p className="text-muted-foreground mt-1">Join thousands of families who trust us</p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Full Name *</Label>
-              <Input id="name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5 h-12" />
+              <Label>Full Name *</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5 h-12" disabled={otpSent} />
             </div>
             <div>
-              <Label htmlFor="phone">Phone Number *</Label>
-              <Input id="phone" type="tel" placeholder="+91 98765 43210" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 h-12" />
+              <Label>Phone Number *</Label>
+              <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 h-12" disabled={otpSent} />
             </div>
-            <div>
-              <Label htmlFor="email">Email (optional)</Label>
-              <Input id="email" type="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 h-12" />
-            </div>
-            <Button className="w-full h-12" onClick={handleRegister}>Create Account</Button>
+            {otpSent && (
+              <div>
+                <Label>OTP</Label>
+                <Input value={otp} onChange={(e) => setOtp(e.target.value)} className="mt-1.5 h-12" maxLength={6} />
+                {devOtp && <p className="text-xs text-primary mt-1">Dev OTP: {devOtp}</p>}
+              </div>
+            )}
+            <Button className="w-full h-12" onClick={otpSent ? handleRegister : handleSendOtp} disabled={loading}>
+              {loading ? "Please wait..." : otpSent ? "Create Account" : "Send OTP"}
+            </Button>
           </div>
 
           <p className="text-center text-sm text-muted-foreground mt-6">

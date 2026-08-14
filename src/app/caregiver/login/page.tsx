@@ -7,15 +7,54 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { APP_NAME } from "@/lib/constants";
 import { Heart } from "lucide-react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 export default function CaregiverLoginPage() {
   const router = useRouter();
+  const [phone, setPhone] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [devOtp, setDevOtp] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    toast.success("Welcome back!");
-    router.push("/caregiver/dashboard");
+  const handleSendOtp = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error();
+      setOtpSent(true);
+      if (data.devOtp) setDevOtp(data.devOtp);
+      toast.success("OTP sent!");
+    } catch {
+      toast.error("Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, otp, role: "caregiver" }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Welcome back!");
+      router.push("/caregiver/dashboard");
+    } catch {
+      toast.error("Invalid OTP");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,20 +69,31 @@ export default function CaregiverLoginPage() {
               <span className="text-xl font-bold">{APP_NAME}</span>
             </Link>
             <h1 className="text-2xl font-bold">Caregiver Login</h1>
-            <p className="text-muted-foreground mt-1">Access your caregiver dashboard</p>
           </div>
 
           <div className="space-y-4">
             <div>
               <Label>Phone Number</Label>
-              <Input type="tel" placeholder="+91 98765 43210" className="mt-1.5 h-12" />
+              <Input type="tel" placeholder="+91 98765 43210" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 h-12" disabled={otpSent} />
             </div>
-            <Button className="w-full h-12" onClick={handleLogin}>Login</Button>
+            {otpSent && (
+              <div>
+                <Label>OTP</Label>
+                <Input value={otp} onChange={(e) => setOtp(e.target.value)} className="mt-1.5 h-12" maxLength={6} />
+                {devOtp && <p className="text-xs text-primary mt-1">Dev OTP: {devOtp}</p>}
+              </div>
+            )}
+            <Button className="w-full h-12" onClick={otpSent ? handleLogin : handleSendOtp} disabled={loading}>
+              {loading ? "Please wait..." : otpSent ? "Login" : "Send OTP"}
+            </Button>
           </div>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             New caregiver?{" "}
             <Link href="/caregiver/register" className="text-primary font-medium hover:underline">Apply now</Link>
+          </p>
+          <p className="text-xs text-center text-muted-foreground mt-4">
+            Demo: +91 98765 43210 (Lakshmi Devi)
           </p>
         </CardContent>
       </Card>

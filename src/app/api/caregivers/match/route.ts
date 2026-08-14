@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MOCK_CAREGIVERS } from "@/lib/mock-data";
+import { db } from "@/lib/db";
 import { matchCaregivers } from "@/lib/matching";
+import { serializeCaregiver } from "@/lib/serializers";
 import { ParsedRequirement } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -9,7 +10,13 @@ export async function POST(request: NextRequest) {
     const requirement: ParsedRequirement = body.requirement;
     const location: string = body.location || "";
 
-    const matches = matchCaregivers(MOCK_CAREGIVERS, requirement, location);
+    const caregivers = await db.caregiverProfile.findMany({
+      where: { verificationStatus: "VERIFIED", isAvailable: true },
+      include: { user: true },
+    });
+
+    const serialized = caregivers.map(serializeCaregiver);
+    const matches = matchCaregivers(serialized, requirement, location);
 
     return NextResponse.json({
       matches: matches.map((m) => ({

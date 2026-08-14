@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  CAREGIVER
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CAREGIVER_ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum CareEventType {
+  CHECK_IN
+  ACTIVITY
+  MEDICATION
+  APPOINTMENT
+  CHECK_OUT
+  ALERT
+}
+
+model User {
+  id               String   @id @default(cuid())
+  phone            String   @unique
+  email            String?
+  name             String
+  role             UserRole @default(CUSTOMER)
+  emergencyContact String?
+  emergencyPhone   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  caregiverProfile CaregiverProfile?
+  bookings         Booking[]         @relation("CustomerBookings")
+  reviews          Review[]
+  otpCodes         OtpCode[]
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phone, code])
+}
+
+model CaregiverProfile {
+  id                  String             @id @default(cuid())
+  userId              String             @unique
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photo               String
+  location            String
+  city                String             @default("Hyderabad")
+  languages           String[]
+  experience          Int
+  skills              String[]
+  bio                 String             @default("")
+  hourlyRate          Int
+  dailyRate           Int
+  rating              Float              @default(0)
+  reviewCount         Int                @default(0)
+  completedBookings   Int                @default(0)
+  identityVerified    Boolean            @default(false)
+  backgroundVerified  Boolean            @default(false)
+  certifications      String[]
+  availability        String[]
+  isAvailable         Boolean            @default(true)
+  verificationStatus  VerificationStatus @default(PENDING)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  bookings Booking[]
+  reviews  Review[]
+}
+
+model Booking {
+  id                  String        @id @default(cuid())
+  customerId          String
+  customer            User          @relation("CustomerBookings", fields: [customerId], references: [id])
+  caregiverId         String?
+  caregiver           CaregiverProfile? @relation(fields: [caregiverId], references: [id])
+  serviceCategory     String
+  serviceName         String
+  requirement         String
+  location            String
+  date                String
+  startTime           String
+  duration            Int
+  totalAmount         Int
+  status              BookingStatus @default(PENDING)
+  paymentStatus       PaymentStatus @default(PENDING)
+  razorpayOrderId     String?
+  razorpayPaymentId   String?
+  patientName         String?
+  patientAge          Int?
+  specialInstructions String?
+  checkInTime         String?
+  checkOutTime        String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  careEvents CareEvent[]
+  review     Review?
+
+  @@index([customerId])
+  @@index([caregiverId])
+  @@index([status])
+}
+
+model CareEvent {
+  id          String        @id @default(cuid())
+  bookingId   String
+  booking     Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  type        CareEventType
+  createdAt   DateTime      @default(now())
+
+  @@index([bookingId])
+}
+
+model Review {
+  id          String           @id @default(cuid())
+  bookingId   String           @unique
+  booking     Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customerId  String
+  customer    User             @relation(fields: [customerId], references: [id])
+  caregiverId String
+  caregiver   CaregiverProfile @relation(fields: [caregiverId], references: [id])
+  rating      Int
+  comment     String
+  createdAt   DateTime         @default(now())
+}

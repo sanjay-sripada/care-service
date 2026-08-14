@@ -13,10 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useBooking } from "@/contexts/booking-context";
-import { ServiceCategory, CaregiverMatch } from "@/lib/types";
+import { Caregiver, CaregiverMatch, ServiceCategory } from "@/lib/types";
 import { DURATION_OPTIONS } from "@/lib/constants";
 import { calculateBookingAmount, formatCurrency } from "@/lib/matching";
-import { MOCK_CAREGIVERS } from "@/lib/mock-data";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -35,9 +34,9 @@ function BookPageContent() {
     if (service) updateFormData({ serviceCategory: service });
   }, [searchParams, updateFormData]);
 
-  const selectedCaregiver = MOCK_CAREGIVERS.find(
-    (c) => c.id === formData.selectedCaregiverId
-  );
+  const selectedCaregiver = matches.find(
+    (m) => m.caregiver.id === formData.selectedCaregiverId
+  )?.caregiver;
 
   const handleFindCaregivers = async () => {
     setLoadingMatches(true);
@@ -76,8 +75,38 @@ function BookPageContent() {
   const handleConfirmBooking = async () => {
     if (!selectedCaregiver) return;
     const amount = calculateBookingAmount(selectedCaregiver.hourlyRate, formData.duration);
-    toast.success("Booking created! Redirecting to payment...");
-    router.push(`/booking/payment?amount=${amount}&caregiver=${selectedCaregiver.id}`);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caregiverId: selectedCaregiver.id,
+          serviceCategory: formData.serviceCategory,
+          requirement: formData.requirement,
+          location: formData.location,
+          date: formData.date,
+          startTime: formData.startTime,
+          duration: formData.duration,
+          totalAmount: amount,
+          patientName: formData.patientName,
+          patientAge: formData.patientAge,
+          specialInstructions: formData.specialInstructions,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error("Please log in to complete booking");
+          router.push("/login?redirect=/book");
+          return;
+        }
+        throw new Error(data.error);
+      }
+      toast.success("Booking created! Redirecting to payment...");
+      router.push(`/booking/payment?bookingId=${data.booking.id}`);
+    } catch {
+      toast.error("Failed to create booking");
+    }
   };
 
   const canProceed = () => {
